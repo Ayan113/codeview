@@ -22,7 +22,7 @@ interface CodeEditorProps {
 export function CodeEditor({ roomId, readOnly = false, onCodeChange }: CodeEditorProps) {
     const { code, language, setCode } = useInterviewStore();
     const [isTyping, setIsTyping] = useState(false);
-    const typingTimeoutRef = useRef<NodeJS.Timeout>();
+    const typingTimeoutRef = useRef<NodeJS.Timeout>(null);
     const editorRef = useRef<any>(null);
 
     const handleEditorMount: OnMount = (editor) => {
