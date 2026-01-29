@@ -6,7 +6,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
+## Live Demo: [codeview-web.vercel.app](https://codeview-web.vercel.app)
 > A production-grade, real-time collaborative code interview platform featuring live code synchronization, secure sandboxed execution, video communication, and AI-powered insights. Built for engineering teams who take technical hiring seriously.
 
 ![CodeView Demo](docs/demo.png)
