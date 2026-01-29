@@ -1,0 +1,256 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  avatar        String?
+  role          UserRole  @default(USER)
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // Relations
+  createdInterviews   Interview[]        @relation("InterviewCreator")
+  interviewsAsHost    InterviewParticipant[] @relation("ParticipantAsHost")
+  interviewsAsCandidate InterviewParticipant[] @relation("ParticipantAsCandidate")
+  questionsCreated    Question[]
+  submissions         Submission[]
+  notes               InterviewNote[]
+  sessions            Session[]
+
+  @@index([email])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  userAgent    String?
+  ipAddress    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  INTERVIEWER
+}
+
+// ============================================
+// INTERVIEW MANAGEMENT
+// ============================================
+
+model Interview {
+  id              String           @id @default(cuid())
+  title           String
+  description     String?
+  scheduledAt     DateTime?
+  duration        Int              @default(60) // in minutes
+  status          InterviewStatus  @default(SCHEDULED)
+  roomCode        String           @unique @default(cuid())
+  startedAt       DateTime?
+  endedAt         DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  // Creator
+  creatorId       String
+  creator         User             @relation("InterviewCreator", fields: [creatorId], references: [id])
+  
+  // Relations
+  participants    InterviewParticipant[]
+  questions       InterviewQuestion[]
+  submissions     Submission[]
+  notes           InterviewNote[]
+  codeSnapshots   CodeSnapshot[]
+
+  @@index([roomCode])
+  @@index([creatorId])
+  @@index([scheduledAt])
+}
+
+model InterviewParticipant {
+  id            String          @id @default(cuid())
+  interviewId   String
+  userId        String
+  role          ParticipantRole
+  joinedAt      DateTime?
+  leftAt        DateTime?
+  isOnline      Boolean         @default(false)
+  
+  interview     Interview       @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  hostUser      User            @relation("ParticipantAsHost", fields: [userId], references: [id])
+  candidateUser User            @relation("ParticipantAsCandidate", fields: [userId], references: [id])
+
+  @@unique([interviewId, userId])
+  @@index([interviewId])
+  @@index([userId])
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ParticipantRole {
+  HOST
+  CANDIDATE
+  OBSERVER
+}
+
+// ============================================
+// QUESTION BANK
+// ============================================
+
+model Question {
+  id           String       @id @default(cuid())
+  title        String
+  description  String
+  difficulty   Difficulty
+  category     String
+  tags         String[]
+  starterCode  Json         // { language: code } mapping
+  testCases    Json         // Array of test cases
+  solution     String?
+  hints        String[]
+  timeLimit    Int          @default(30) // minutes
+  isPublic     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  // Creator
+  creatorId    String
+  creator      User         @relation(fields: [creatorId], references: [id])
+  
+  // Relations
+  interviews   InterviewQuestion[]
+  submissions  Submission[]
+
+  @@index([difficulty])
+  @@index([category])
+  @@index([creatorId])
+}
+
+model InterviewQuestion {
+  id           String    @id @default(cuid())
+  interviewId  String
+  questionId   String
+  order        Int
+  addedAt      DateTime  @default(now())
+  
+  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  question     Question  @relation(fields: [questionId], references: [id])
+
+  @@unique([interviewId, questionId])
+  @@index([interviewId])
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// ============================================
+// CODE SUBMISSIONS & EXECUTION
+// ============================================
+
+model Submission {
+  id           String           @id @default(cuid())
+  interviewId  String
+  questionId   String
+  userId       String
+  code         String
+  language     String
+  status       SubmissionStatus @default(PENDING)
+  
+  // Execution results
+  output       String?
+  error        String?
+  executionTime Int?            // in milliseconds
+  memoryUsed    Int?            // in KB
+  testResults   Json?           // Array of test case results
+  
+  // AI Analysis
+  aiAnalysis    Json?           // { qualityScore, complexityEstimate, suggestions }
+  
+  createdAt    DateTime         @default(now())
+  
+  interview    Interview        @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  question     Question         @relation(fields: [questionId], references: [id])
+  user         User             @relation(fields: [userId], references: [id])
+
+  @@index([interviewId])
+  @@index([userId])
+  @@index([questionId])
+}
+
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  ERROR
+  TIMEOUT
+}
+
+// ============================================
+// CODE SNAPSHOTS (for playback)
+// ============================================
+
+model CodeSnapshot {
+  id           String    @id @default(cuid())
+  interviewId  String
+  code         String
+  language     String
+  timestamp    DateTime  @default(now())
+  
+  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId, timestamp])
+}
+
+// ============================================
+// INTERVIEW NOTES & FEEDBACK
+// ============================================
+
+model InterviewNote {
+  id           String    @id @default(cuid())
+  interviewId  String
+  userId       String
+  content      String
+  timestamp    DateTime  @default(now())
+  isPrivate    Boolean   @default(true)
+  
+  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([interviewId])
+  @@index([userId])
+}
