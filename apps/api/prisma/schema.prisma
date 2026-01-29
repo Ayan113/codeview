@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -34,6 +34,8 @@ model User {
   submissions       Submission[]
   notes             InterviewNote[]
   sessions          Session[]
+
+  @@index([email])
 }
 
 model Session {
@@ -46,6 +48,9 @@ model Session {
   ipAddress    String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
 }
 
 // ============================================
@@ -75,6 +80,10 @@ model Interview {
   submissions     Submission[]
   notes           InterviewNote[]
   codeSnapshots   CodeSnapshot[]
+
+  @@index([roomCode])
+  @@index([creatorId])
+  @@index([scheduledAt])
 }
 
 model InterviewParticipant {
@@ -90,6 +99,8 @@ model InterviewParticipant {
   user          User      @relation(fields: [userId], references: [id])
 
   @@unique([interviewId, userId])
+  @@index([interviewId])
+  @@index([userId])
 }
 
 // ============================================
@@ -102,11 +113,11 @@ model Question {
   description  String
   difficulty   String   // EASY, MEDIUM, HARD
   category     String
-  tags         String   // JSON string for SQLite
-  starterCode  String   // JSON string for SQLite
-  testCases    String   // JSON string for SQLite
+  tags         Json     @default("[]")
+  starterCode  Json     @default("{}")
+  testCases    Json     @default("[]")
   solution     String?
-  hints        String   // JSON string for SQLite
+  hints        Json     @default("[]")
   timeLimit    Int      @default(30) // minutes
   isPublic     Boolean  @default(true)
   createdAt    DateTime @default(now())
@@ -119,6 +130,10 @@ model Question {
   // Relations
   interviews   InterviewQuestion[]
   submissions  Submission[]
+
+  @@index([difficulty])
+  @@index([category])
+  @@index([creatorId])
 }
 
 model InterviewQuestion {
@@ -132,6 +147,7 @@ model InterviewQuestion {
   question     Question  @relation(fields: [questionId], references: [id])
 
   @@unique([interviewId, questionId])
+  @@index([interviewId])
 }
 
 // ============================================
@@ -152,16 +168,20 @@ model Submission {
   error        String?
   executionTime Int?    // in milliseconds
   memoryUsed    Int?    // in KB
-  testResults   String? // JSON string for SQLite
+  testResults   Json?
   
   // AI Analysis
-  aiAnalysis    String? // JSON string for SQLite
+  aiAnalysis    Json?
   
   createdAt    DateTime @default(now())
   
   interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
   question     Question  @relation(fields: [questionId], references: [id])
   user         User      @relation(fields: [userId], references: [id])
+
+  @@index([interviewId])
+  @@index([userId])
+  @@index([questionId])
 }
 
 // ============================================
@@ -176,6 +196,8 @@ model CodeSnapshot {
   timestamp    DateTime  @default(now())
   
   interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId, timestamp])
 }
 
 // ============================================
@@ -192,4 +214,7 @@ model InterviewNote {
   
   interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [userId], references: [id])
+
+  @@index([interviewId])
+  @@index([userId])
 }

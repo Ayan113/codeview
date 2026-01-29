@@ -5,8 +5,8 @@
     "main": "dist/index.js",
     "scripts": {
         "dev": "tsx watch src/index.ts",
-        "build": "tsc",
-        "start": "node dist/index.js",
+        "build": "npx prisma generate",
+        "start": "tsx src/index.ts",
         "lint": "eslint src --ext .ts",
         "test": "jest --passWithNoTests",
         "test:watch": "jest --watch",
