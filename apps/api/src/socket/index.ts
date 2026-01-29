@@ -1,8 +1,6 @@
 import { Server as SocketServer, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { config } from '../config';
-import { getRedisClient } from '../config/redis';
-import { createAdapter } from '@socket.io/redis-adapter';
 import { codeHandler } from './handlers/code.handler';
 import { presenceHandler } from './handlers/presence.handler';
 import logger from '../utils/logger';
@@ -25,13 +23,8 @@ export function initializeSocket(httpServer: HttpServer): SocketServer {
         transports: ['websocket', 'polling'],
     });
 
-    // Initialize Redis adapter for scaling
-    if (!config.isDev) {
-        const pubClient = getRedisClient();
-        const subClient = pubClient.duplicate();
-        io.adapter(createAdapter(pubClient, subClient));
-        logger.info('Socket.io Redis adapter initialized');
-    }
+    // Note: Redis adapter can be added for horizontal scaling
+    // For local development, we run a single server instance
 
     // Authentication middleware
     io.use(async (socket, next) => {

@@ -1,21 +1,18 @@
 import pino from 'pino';
 import { config } from '../config';
 
-export const logger = pino({
+// Simple logger without pino-pretty transport
+const logger = pino({
     level: config.logLevel,
-    transport: config.isDev
-        ? {
-            target: 'pino-pretty',
-            options: {
-                colorize: true,
-                translateTime: 'SYS:standard',
-                ignore: 'pid,hostname',
-            },
-        }
-        : undefined,
     base: {
         env: config.nodeEnv,
     },
+    ...(config.isDev && {
+        formatters: {
+            level: (label: string) => ({ level: label }),
+        },
+    }),
 });
 
+export { logger };
 export default logger;

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from './auth.routes';
 import interviewRoutes from './interview.routes';
 import questionRoutes from './question.routes';
+import executionRoutes from './execution.routes';
 
 const router = Router();
 
@@ -9,6 +10,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 router.use('/interviews', interviewRoutes);
 router.use('/questions', questionRoutes);
+router.use('/execute', executionRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

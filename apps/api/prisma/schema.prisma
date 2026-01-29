@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -20,7 +20,7 @@ model User {
   password      String
   name          String
   avatar        String?
-  role          UserRole  @default(USER)
+  role          String    @default("USER") // USER, ADMIN, INTERVIEWER
   isActive      Boolean   @default(true)
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
@@ -28,15 +28,12 @@ model User {
   lastLoginAt   DateTime?
 
   // Relations
-  createdInterviews   Interview[]        @relation("InterviewCreator")
-  interviewsAsHost    InterviewParticipant[] @relation("ParticipantAsHost")
-  interviewsAsCandidate InterviewParticipant[] @relation("ParticipantAsCandidate")
-  questionsCreated    Question[]
-  submissions         Submission[]
-  notes               InterviewNote[]
-  sessions            Session[]
-
-  @@index([email])
+  createdInterviews Interview[]   @relation("InterviewCreator")
+  participations    InterviewParticipant[]
+  questionsCreated  Question[]
+  submissions       Submission[]
+  notes             InterviewNote[]
+  sessions          Session[]
 }
 
 model Session {
@@ -49,15 +46,6 @@ model Session {
   ipAddress    String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-}
-
-enum UserRole {
-  USER
-  ADMIN
-  INTERVIEWER
 }
 
 // ============================================
@@ -65,21 +53,21 @@ enum UserRole {
 // ============================================
 
 model Interview {
-  id              String           @id @default(cuid())
+  id              String   @id @default(cuid())
   title           String
   description     String?
   scheduledAt     DateTime?
-  duration        Int              @default(60) // in minutes
-  status          InterviewStatus  @default(SCHEDULED)
-  roomCode        String           @unique @default(cuid())
+  duration        Int      @default(60) // in minutes
+  status          String   @default("SCHEDULED") // SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+  roomCode        String   @unique @default(cuid())
   startedAt       DateTime?
   endedAt         DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   
   // Creator
   creatorId       String
-  creator         User             @relation("InterviewCreator", fields: [creatorId], references: [id])
+  creator         User     @relation("InterviewCreator", fields: [creatorId], references: [id])
   
   // Relations
   participants    InterviewParticipant[]
@@ -87,41 +75,21 @@ model Interview {
   submissions     Submission[]
   notes           InterviewNote[]
   codeSnapshots   CodeSnapshot[]
-
-  @@index([roomCode])
-  @@index([creatorId])
-  @@index([scheduledAt])
 }
 
 model InterviewParticipant {
-  id            String          @id @default(cuid())
+  id            String   @id @default(cuid())
   interviewId   String
   userId        String
-  role          ParticipantRole
+  role          String   // HOST, CANDIDATE, OBSERVER
   joinedAt      DateTime?
   leftAt        DateTime?
-  isOnline      Boolean         @default(false)
+  isOnline      Boolean  @default(false)
   
-  interview     Interview       @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  hostUser      User            @relation("ParticipantAsHost", fields: [userId], references: [id])
-  candidateUser User            @relation("ParticipantAsCandidate", fields: [userId], references: [id])
+  interview     Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id])
 
   @@unique([interviewId, userId])
-  @@index([interviewId])
-  @@index([userId])
-}
-
-enum InterviewStatus {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum ParticipantRole {
-  HOST
-  CANDIDATE
-  OBSERVER
 }
 
 // ============================================
@@ -129,32 +97,28 @@ enum ParticipantRole {
 // ============================================
 
 model Question {
-  id           String       @id @default(cuid())
+  id           String   @id @default(cuid())
   title        String
   description  String
-  difficulty   Difficulty
+  difficulty   String   // EASY, MEDIUM, HARD
   category     String
-  tags         String[]
-  starterCode  Json         // { language: code } mapping
-  testCases    Json         // Array of test cases
+  tags         String   // JSON string for SQLite
+  starterCode  String   // JSON string for SQLite
+  testCases    String   // JSON string for SQLite
   solution     String?
-  hints        String[]
-  timeLimit    Int          @default(30) // minutes
-  isPublic     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  hints        String   // JSON string for SQLite
+  timeLimit    Int      @default(30) // minutes
+  isPublic     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   
   // Creator
   creatorId    String
-  creator      User         @relation(fields: [creatorId], references: [id])
+  creator      User     @relation(fields: [creatorId], references: [id])
   
   // Relations
   interviews   InterviewQuestion[]
   submissions  Submission[]
-
-  @@index([difficulty])
-  @@index([category])
-  @@index([creatorId])
 }
 
 model InterviewQuestion {
@@ -168,13 +132,6 @@ model InterviewQuestion {
   question     Question  @relation(fields: [questionId], references: [id])
 
   @@unique([interviewId, questionId])
-  @@index([interviewId])
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
 }
 
 // ============================================
@@ -182,42 +139,29 @@ enum Difficulty {
 // ============================================
 
 model Submission {
-  id           String           @id @default(cuid())
+  id           String   @id @default(cuid())
   interviewId  String
   questionId   String
   userId       String
   code         String
   language     String
-  status       SubmissionStatus @default(PENDING)
+  status       String   @default("PENDING") // PENDING, RUNNING, PASSED, FAILED, ERROR, TIMEOUT
   
   // Execution results
   output       String?
   error        String?
-  executionTime Int?            // in milliseconds
-  memoryUsed    Int?            // in KB
-  testResults   Json?           // Array of test case results
+  executionTime Int?    // in milliseconds
+  memoryUsed    Int?    // in KB
+  testResults   String? // JSON string for SQLite
   
   // AI Analysis
-  aiAnalysis    Json?           // { qualityScore, complexityEstimate, suggestions }
+  aiAnalysis    String? // JSON string for SQLite
   
-  createdAt    DateTime         @default(now())
+  createdAt    DateTime @default(now())
   
-  interview    Interview        @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-  question     Question         @relation(fields: [questionId], references: [id])
-  user         User             @relation(fields: [userId], references: [id])
-
-  @@index([interviewId])
-  @@index([userId])
-  @@index([questionId])
-}
-
-enum SubmissionStatus {
-  PENDING
-  RUNNING
-  PASSED
-  FAILED
-  ERROR
-  TIMEOUT
+  interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  question     Question  @relation(fields: [questionId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 }
 
 // ============================================
@@ -232,8 +176,6 @@ model CodeSnapshot {
   timestamp    DateTime  @default(now())
   
   interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-
-  @@index([interviewId, timestamp])
 }
 
 // ============================================
@@ -250,7 +192,4 @@ model InterviewNote {
   
   interview    Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [userId], references: [id])
-
-  @@index([interviewId])
-  @@index([userId])
 }
