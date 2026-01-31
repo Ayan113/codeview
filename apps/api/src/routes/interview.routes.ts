@@ -5,6 +5,7 @@ import {
     updateInterviewSchema,
     addQuestionSchema,
 } from '../controllers/interview.controller';
+import { NoteController, createNoteSchema, updateNoteSchema } from '../controllers/note.controller';
 import { authenticate } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
 
@@ -28,5 +29,14 @@ router.post('/:id/join', InterviewController.joinInterview);
 
 // Question management
 router.post('/:id/questions', validate(addQuestionSchema), InterviewController.addQuestion);
+
+// Notes management
+router.get('/:id/notes', NoteController.getNotes);
+router.post('/:id/notes', validate(createNoteSchema), NoteController.createNote);
+
+// Interview summary and AI
+router.get('/:id/summary', NoteController.getInterviewSummary);
+router.get('/:id/ai-feedback', NoteController.generateAIFeedback);
+router.post('/:id/ai-summary', NoteController.generateAISummary);
 
 export default router;

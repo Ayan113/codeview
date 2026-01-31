@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
+import { NotesPanel } from '@/components/interview/NotesPanel';
+import { CodeAnalysisPanel } from '@/components/interview/CodeAnalysisPanel';
 import { useAuthStore } from '@/store/auth.store';
 import { useInterviewStore } from '@/store/interview.store';
 import { api } from '@/lib/api';
@@ -67,6 +69,14 @@ export default function InterviewPage() {
     const [videoEnabled, setVideoEnabled] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
     const [showOutput, setShowOutput] = useState(false);
+    const [isHost, setIsHost] = useState(false);
+
+    // Determine if user is host
+    useEffect(() => {
+        if (interview && user) {
+            setIsHost(interview.creatorId === user.id);
+        }
+    }, [interview, user]);
 
     // Check auth
     useEffect(() => {
@@ -286,6 +296,7 @@ export default function InterviewPage() {
                                 )}
                                 Run Code
                             </Button>
+                            <CodeAnalysisPanel code={code} language={language} />
                         </div>
                     </div>
 
@@ -375,15 +386,13 @@ export default function InterviewPage() {
                         </div>
                     </div>
 
-                    {/* Chat (placeholder) */}
-                    <div className="flex-1 flex flex-col p-4">
-                        <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
-                            <MessageSquare className="w-4 h-4" />
-                            Chat
-                        </h2>
-                        <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-                            Chat coming soon...
-                        </div>
+                    {/* Notes Panel */}
+                    <div className="flex-1 p-4 min-h-0">
+                        <NotesPanel
+                            interviewId={interviewId}
+                            currentUserId={user?.id || ''}
+                            isHost={isHost}
+                        />
                     </div>
                 </div>
             </div>

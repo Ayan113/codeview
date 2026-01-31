@@ -154,6 +154,68 @@ class ApiClient {
         return this.request<{ success: boolean; data: any[] }>('/questions/categories');
     }
 
+    // Note endpoints
+    async getNotes(interviewId: string) {
+        return this.request<{ success: boolean; data: any[]; count: number }>(`/interviews/${interviewId}/notes`);
+    }
+
+    async createNote(interviewId: string, data: { content: string; isPrivate?: boolean }) {
+        return this.request<{ success: boolean; data: any }>(`/interviews/${interviewId}/notes`, {
+            method: 'POST',
+            body: data,
+        });
+    }
+
+    async updateNote(noteId: string, data: { content: string; isPrivate?: boolean }) {
+        return this.request<{ success: boolean; data: any }>(`/notes/${noteId}`, {
+            method: 'PUT',
+            body: data,
+        });
+    }
+
+    async deleteNote(noteId: string) {
+        return this.request<{ success: boolean }>(`/notes/${noteId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    // Interview summary and AI
+    async getInterviewSummary(interviewId: string) {
+        return this.request<{ success: boolean; data: any }>(`/interviews/${interviewId}/summary`);
+    }
+
+    async getAIFeedback(interviewId: string) {
+        return this.request<{ success: boolean; data: any }>(`/interviews/${interviewId}/ai-feedback`);
+    }
+
+    async generateAISummary(interviewId: string) {
+        return this.request<{ success: boolean; data: any }>(`/interviews/${interviewId}/ai-summary`, {
+            method: 'POST',
+        });
+    }
+
+    async analyzeCode(code: string, language: string) {
+        return this.request<{ success: boolean; data: any }>('/ai/analyze-code', {
+            method: 'POST',
+            body: { code, language },
+        });
+    }
+
+    // Code execution
+    async executeCode(data: { code: string; language: string; input?: string; interviewId?: string; questionId?: string }) {
+        return this.request<{ success: boolean; data: any }>('/execute', {
+            method: 'POST',
+            body: data,
+        });
+    }
+
+    async runTests(data: { code: string; language: string; questionId: string }) {
+        return this.request<{ success: boolean; data: any }>('/execute/tests', {
+            method: 'POST',
+            body: data,
+        });
+    }
+
     // Health check
     async healthCheck() {
         return this.request<{ success: boolean; data: any }>('/health');
