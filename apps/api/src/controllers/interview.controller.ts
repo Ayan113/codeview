@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { InterviewService } from '../services/interview.service';
-import { InterviewStatus } from '@prisma/client';
+import { InterviewStatus, InterviewStatusType } from '../types/constants';
 import { z } from 'zod';
 
 // Validation schemas
@@ -17,7 +17,7 @@ export const updateInterviewSchema = z.object({
     description: z.string().max(2000).optional(),
     scheduledAt: z.string().datetime().optional().transform((val) => val ? new Date(val) : undefined),
     duration: z.number().min(15).max(480).optional(),
-    status: z.nativeEnum(InterviewStatus).optional(),
+    status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
 });
 
 export const addQuestionSchema = z.object({
@@ -40,7 +40,7 @@ export class InterviewController {
 
     static async getInterviews(req: Request, res: Response, next: NextFunction) {
         try {
-            const status = req.query.status as InterviewStatus | undefined;
+            const status = req.query.status as InterviewStatusType | undefined;
             const interviews = await InterviewService.getInterviews(req.user!.id, { status });
 
             res.json({

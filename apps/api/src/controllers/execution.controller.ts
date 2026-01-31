@@ -74,7 +74,13 @@ export class ExecutionController {
                 throw new NotFoundError('Question not found');
             }
 
-            const testCases = question.testCases as Array<{ input: string; expectedOutput: string }>;
+            // Parse testCases from JSON string stored in database
+            let testCases: Array<{ input: string; expectedOutput: string }>;
+            if (typeof question.testCases === 'string') {
+                testCases = JSON.parse(question.testCases);
+            } else {
+                testCases = question.testCases as Array<{ input: string; expectedOutput: string }>;
+            }
 
             if (!testCases || testCases.length === 0) {
                 throw new BadRequestError('Question has no test cases');

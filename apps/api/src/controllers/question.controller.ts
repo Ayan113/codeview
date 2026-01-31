@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { QuestionService } from '../services/question.service';
-import { Difficulty } from '@prisma/client';
+import { Difficulty, DifficultyType } from '../types/constants';
 import { z } from 'zod';
 
 // Validation schemas
 export const createQuestionSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters').max(200),
     description: z.string().min(10, 'Description must be at least 10 characters').max(10000),
-    difficulty: z.nativeEnum(Difficulty),
+    difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
     category: z.string().min(2).max(50),
     tags: z.array(z.string().max(30)).max(10).optional(),
     starterCode: z.record(z.string()).optional(),
@@ -25,7 +25,7 @@ export const createQuestionSchema = z.object({
 export const updateQuestionSchema = createQuestionSchema.partial();
 
 export const questionFiltersSchema = z.object({
-    difficulty: z.nativeEnum(Difficulty).optional(),
+    difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
     category: z.string().optional(),
     search: z.string().optional(),
     tags: z.string().optional().transform((val) => val?.split(',').filter(Boolean)),
@@ -48,7 +48,7 @@ export class QuestionController {
     static async getQuestions(req: Request, res: Response, next: NextFunction) {
         try {
             const filters = {
-                difficulty: req.query.difficulty as Difficulty | undefined,
+                difficulty: req.query.difficulty as DifficultyType | undefined,
                 category: req.query.category as string | undefined,
                 search: req.query.search as string | undefined,
                 tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,

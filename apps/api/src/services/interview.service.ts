@@ -1,7 +1,13 @@
 import { prisma } from '../config/database';
 import { NotFoundError, ForbiddenError, BadRequestError } from '../utils/errors';
-import { InterviewStatus, ParticipantRole } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import {
+    InterviewStatus,
+    InterviewStatusType,
+    ParticipantRole,
+    ParticipantRoleType
+} from '../types/constants';
+
 
 interface CreateInterviewInput {
     title: string;
@@ -16,7 +22,7 @@ interface UpdateInterviewInput {
     description?: string;
     scheduledAt?: Date;
     duration?: number;
-    status?: InterviewStatus;
+    status?: InterviewStatusType;
 }
 
 export class InterviewService {
@@ -44,7 +50,7 @@ export class InterviewService {
                 },
                 participants: {
                     include: {
-                        hostUser: {
+                        user: {
                             select: { id: true, name: true, email: true, avatar: true },
                         },
                     },
@@ -75,7 +81,7 @@ export class InterviewService {
         return interview;
     }
 
-    static async getInterviews(userId: string, filters?: { status?: InterviewStatus }) {
+    static async getInterviews(userId: string, filters?: { status?: InterviewStatusType }) {
         const interviews = await prisma.interview.findMany({
             where: {
                 OR: [
@@ -90,7 +96,7 @@ export class InterviewService {
                 },
                 participants: {
                     include: {
-                        hostUser: {
+                        user: {
                             select: { id: true, name: true, email: true, avatar: true },
                         },
                     },
@@ -114,7 +120,7 @@ export class InterviewService {
                 },
                 participants: {
                     include: {
-                        hostUser: {
+                        user: {
                             select: { id: true, name: true, email: true, avatar: true },
                         },
                     },
@@ -155,7 +161,7 @@ export class InterviewService {
                 },
                 participants: {
                     include: {
-                        hostUser: {
+                        user: {
                             select: { id: true, name: true, email: true, avatar: true },
                         },
                     },
@@ -198,7 +204,7 @@ export class InterviewService {
                 },
                 participants: {
                     include: {
-                        hostUser: {
+                        user: {
                             select: { id: true, name: true, email: true, avatar: true },
                         },
                     },
@@ -286,7 +292,7 @@ export class InterviewService {
     static async addParticipant(
         interviewId: string,
         userId: string,
-        role: ParticipantRole = ParticipantRole.CANDIDATE
+        role: ParticipantRoleType = ParticipantRole.CANDIDATE
     ) {
         // Check if already a participant
         const existing = await prisma.interviewParticipant.findUnique({
@@ -309,7 +315,7 @@ export class InterviewService {
                 role,
             },
             include: {
-                hostUser: {
+                user: {
                     select: { id: true, name: true, email: true, avatar: true },
                 },
             },

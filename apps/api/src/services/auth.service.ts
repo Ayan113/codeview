@@ -207,8 +207,8 @@ export class AuthService {
             role: role as any,
         };
 
-        return jwt.sign(payload, config.jwtSecret, {
-            expiresIn: config.jwtExpiresIn,
-        });
+        // Use type assertion for SignOptions since jwtExpiresIn can be '7d', '24h', etc.
+        const options = { expiresIn: config.jwtExpiresIn } as jwt.SignOptions;
+        return jwt.sign(payload, config.jwtSecret, options);
     }
 }

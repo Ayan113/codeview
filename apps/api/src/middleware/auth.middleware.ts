@@ -3,12 +3,12 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { prisma } from '../config/database';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors';
-import { UserRole } from '@prisma/client';
+import { UserRoleType } from '../types/constants';
 
 export interface JwtPayload {
     userId: string;
     email: string;
-    role: UserRole;
+    role: UserRoleType;
 }
 
 declare global {
@@ -17,7 +17,7 @@ declare global {
             user?: {
                 id: string;
                 email: string;
-                role: UserRole;
+                role: string;
                 name: string;
             };
         }
@@ -73,7 +73,7 @@ export async function authenticate(
     }
 }
 
-export function authorize(...allowedRoles: UserRole[]) {
+export function authorize(...allowedRoles: string[]) {
     return (req: Request, _res: Response, next: NextFunction): void => {
         if (!req.user) {
             next(new UnauthorizedError('Not authenticated'));

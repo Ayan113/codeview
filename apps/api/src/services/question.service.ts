@@ -1,11 +1,11 @@
 import { prisma } from '../config/database';
 import { NotFoundError, ForbiddenError } from '../utils/errors';
-import { Difficulty } from '@prisma/client';
+import { DifficultyType } from '../types/constants';
 
 interface CreateQuestionInput {
     title: string;
     description: string;
-    difficulty: Difficulty;
+    difficulty: DifficultyType;
     category: string;
     tags?: string[];
     starterCode?: Record<string, string>;
@@ -19,7 +19,7 @@ interface CreateQuestionInput {
 interface UpdateQuestionInput {
     title?: string;
     description?: string;
-    difficulty?: Difficulty;
+    difficulty?: DifficultyType;
     category?: string;
     tags?: string[];
     starterCode?: Record<string, string>;
@@ -31,7 +31,7 @@ interface UpdateQuestionInput {
 }
 
 interface QuestionFilters {
-    difficulty?: Difficulty;
+    difficulty?: DifficultyType;
     category?: string;
     search?: string;
     tags?: string[];
@@ -45,16 +45,16 @@ export class QuestionService {
                 description: input.description,
                 difficulty: input.difficulty,
                 category: input.category,
-                tags: input.tags || [],
-                starterCode: input.starterCode || {
+                tags: JSON.stringify(input.tags || []),
+                starterCode: JSON.stringify(input.starterCode || {
                     javascript: '// Write your solution here\nfunction solution() {\n  \n}\n',
                     python: '# Write your solution here\ndef solution():\n    pass\n',
                     java: '// Write your solution here\nclass Solution {\n    public void solution() {\n        \n    }\n}\n',
                     cpp: '// Write your solution here\n#include <iostream>\n\nint main() {\n    return 0;\n}\n',
-                },
-                testCases: input.testCases || [],
+                }),
+                testCases: JSON.stringify(input.testCases || []),
                 solution: input.solution,
-                hints: input.hints || [],
+                hints: JSON.stringify(input.hints || []),
                 timeLimit: input.timeLimit || 30,
                 isPublic: input.isPublic ?? true,
                 creatorId,
@@ -153,9 +153,16 @@ export class QuestionService {
             throw new ForbiddenError('Only the creator can update this question');
         }
 
+        // Transform input to database-compatible format
+        const data: any = { ...input };
+        if (input.tags) data.tags = JSON.stringify(input.tags);
+        if (input.starterCode) data.starterCode = JSON.stringify(input.starterCode);
+        if (input.testCases) data.testCases = JSON.stringify(input.testCases);
+        if (input.hints) data.hints = JSON.stringify(input.hints);
+
         const updated = await prisma.question.update({
             where: { id: questionId },
-            data: input,
+            data,
             include: {
                 creator: {
                     select: { id: true, name: true, email: true },
