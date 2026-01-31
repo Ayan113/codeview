@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,8 @@ export default function InterviewPage() {
     const [audioEnabled, setAudioEnabled] = useState(true);
     const [showOutput, setShowOutput] = useState(false);
     const [isHost, setIsHost] = useState(false);
+    const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     // Determine if user is host
     useEffect(() => {
@@ -160,8 +162,43 @@ export default function InterviewPage() {
     useEffect(() => {
         return () => {
             reset();
+            // Cleanup video stream
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
         };
-    }, [reset]);
+    }, [reset, videoStream]);
+
+    // Camera toggle effect
+    useEffect(() => {
+        const toggleCamera = async () => {
+            if (videoEnabled) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 320, height: 240 },
+                        audio: audioEnabled,
+                    });
+                    setVideoStream(stream);
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                } catch (error) {
+                    console.error('Failed to access camera:', error);
+                    toast.error('Could not access camera');
+                    setVideoEnabled(false);
+                }
+            } else {
+                if (videoStream) {
+                    videoStream.getTracks().forEach(track => track.stop());
+                    setVideoStream(null);
+                }
+                if (videoRef.current) {
+                    videoRef.current.srcObject = null;
+                }
+            }
+        };
+        toggleCamera();
+    }, [videoEnabled, audioEnabled]);
 
     const handleCopyRoomCode = () => {
         if (roomCode) {
@@ -177,18 +214,29 @@ export default function InterviewPage() {
         setShowOutput(true);
 
         try {
-            // Simulated code execution (in production, this calls the backend)
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const response = await api.executeCode({
+                code,
+                language,
+                interviewId,
+            });
 
-            // Mock output
-            const mockOutput = language === 'python'
-                ? 'Hello, World!\n\nProcess finished with exit code 0'
-                : language === 'javascript'
-                    ? 'Hello, World!\n\nExecution completed in 42ms'
-                    : 'Compilation successful\nOutput: Hello, World!';
+            const result = response.data;
+            let outputText = '';
 
-            setOutput(mockOutput);
-            toast.success('Code executed successfully');
+            if (result.error) {
+                outputText = `Error: ${result.error}\n`;
+                if (result.stderr) outputText += result.stderr;
+            } else {
+                outputText = result.stdout || result.output || 'Code executed successfully (no output)';
+                if (result.executionTime) {
+                    outputText += `\n\n⏱ Execution time: ${result.executionTime}ms`;
+                }
+            }
+
+            setOutput(outputText);
+            if (!result.error) {
+                toast.success('Code executed successfully');
+            }
         } catch (error: any) {
             setOutput(`Error: ${error.message}`);
             toast.error('Execution failed');
@@ -337,9 +385,15 @@ export default function InterviewPage() {
                     {/* Video Section */}
                     <div className="p-4 border-b border-border">
                         <h2 className="text-sm font-medium mb-3">Video Call</h2>
-                        <div className="aspect-video bg-secondary rounded-lg flex items-center justify-center mb-3">
-                            {videoEnabled ? (
-                                <div className="text-sm text-muted-foreground">Camera feed</div>
+                        <div className="aspect-video bg-secondary rounded-lg flex items-center justify-center mb-3 overflow-hidden">
+                            {videoEnabled && videoStream ? (
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    muted
+                                    playsInline
+                                    className="w-full h-full object-cover rounded-lg"
+                                />
                             ) : (
                                 <VideoOff className="w-8 h-8 text-muted-foreground" />
                             )}
@@ -387,12 +441,14 @@ export default function InterviewPage() {
                     </div>
 
                     {/* Notes Panel */}
-                    <div className="flex-1 p-4 min-h-0">
-                        <NotesPanel
-                            interviewId={interviewId}
-                            currentUserId={user?.id || ''}
-                            isHost={isHost}
-                        />
+                    <div className="flex-1 p-4 min-h-0 overflow-hidden">
+                        <div className="h-full">
+                            <NotesPanel
+                                interviewId={interviewId}
+                                currentUserId={user?.id || ''}
+                                isHost={isHost}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
